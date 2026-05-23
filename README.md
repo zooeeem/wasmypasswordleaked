@@ -1,8 +1,8 @@
-# SecureScan — Password & Breach Risk Checker
+# Was My Password Leaked?
 
-A lightweight Flask web app that checks passwords against the HaveIBeenPwned database and computes an entropy score with hardening recommendations.
+A lightweight Flask web app that checks your password against the HaveIBeenPwned database and gives you an entropy score with personalised hardening tips.
 
-**Your password is never sent in plain text.** The app uses k-anonymity: only the first 5 characters of the SHA-1 hash are sent to the HIBP API.
+**Your password never touches the network.** The app uses k-anonymity: only the first 5 characters of the SHA-1 hash are sent to the HIBP API. The actual comparison happens locally on your machine.
 
 ## Features
 - Breach check via HaveIBeenPwned (k-anonymity model)
@@ -10,12 +10,13 @@ A lightweight Flask web app that checks passwords against the HaveIBeenPwned dat
 - Character class detection (lowercase, uppercase, digits, symbols)
 - Personalised hardening recommendations
 - Live entropy bar as you type
-- Clean dark UI
+- Facts and stats about password security with cited sources
+- Clean white UI with scroll animations
 
 ## Run locally
 
 ```bash
-cd SecureScan
+cd wasmypasswordleaked
 pip install -r requirements.txt
 python app.py
 ```
