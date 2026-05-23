@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Was My Password Leaked?</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&family=Bebas+Neue&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:        #ffffff;
+      --surface:   #f5f5f7;
+      --card:      #ffffff;
+      --text:      #1d1d1f;
+      --muted:     #8e8e93;
+      --body:      #48484a;
+      --green:     #16a34a;
+      --yellow:    #b45309;
+      --orange:    #c2410c;
+      --red:       #dc2626;
+      --blue:      #1d4ed8;
+      --radius:    20px;
+      --radius-sm: 14px;
+      --shadow-sm: 0 2px 12px rgba(0,0,0,0.06);
+      --shadow-md: 0 8px 32px rgba(0,0,0,0.09);
+      --shadow-lg: 0 20px 60px rgba(0,0,0,0.12);
+      --grad:      linear-gradient(135deg, #1d4ed8 0%, #7c3aed 100%);
+      --grad-green:linear-gradient(135deg, #16a34a 0%, #0d9488 100%);
+    }
+
+    html, body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Scroll reveal */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.6s cubic-bezier(0.4,0,0.2,1), transform 0.6s cubic-bezier(0.4,0,0.2,1);
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-delay-1 { transition-delay: 0.10s; }
+    .reveal-delay-2 { transition-delay: 0.20s; }
+    .reveal-delay-3 { transition-delay: 0.30s; }
+    .reveal-delay-4 { transition-delay: 0.40s; }
+
+    /* Layout */
+    .page { max-width: 680px; margin: 0 auto; padding: 0 24px 120px; }
+
+    /* Hero */
+    .hero {
+      padding: 80px 0 64px;
+      position: relative;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -60px; left: -100px; right: -100px;
+      height: 420px;
+      background: radial-gradient(ellipse 70% 60% at 50% 20%, rgba(29,78,216,0.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .wordmark {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 3rem;
+      letter-spacing: 0.05em;
+      color: var(--text);
+      line-height: 1;
+      margin-bottom: 12px;
+    }
+    .wordmark .accent {
+      background: var(--grad);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: var(--muted);
+      line-height: 1.65;
+      max-width: 460px;
+      font-weight: 400;
+      margin-bottom: 20px;
+    }
+
+    .privacy-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 100px;
+      font-size: 0.75rem;
+      color: var(--green);
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      box-shadow: var(--shadow-sm);
+    }
+    .privacy-pill svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+    /* Input card */
+    .input-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 32px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow-md);
+      transition: box-shadow 0.3s ease;
+    }
+    .input-card:focus-within { box-shadow: var(--shadow-lg); }
+
+    .input-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+      font-weight: 600;
+    }
+    .input-row { display: flex; gap: 10px; align-items: stretch; }
+    .input-wrap { flex: 1; position: relative; }
+
+    #passwordInput {
+      width: 100%;
+      background: var(--surface);
+      border: 1.5px solid transparent;
+      border-radius: 12px;
+      padding: 14px 46px 14px 18px;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.25s, background 0.25s, box-shadow 0.25s;
+    }
+    #passwordInput:focus {
+      border-color: #1d4ed8;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(29,78,216,0.10);
+    }
+    #passwordInput::placeholder { color: var(--muted); }
+
+    .toggle-vis {
+      position: absolute; right: 13px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; color: var(--muted);
+      transition: color 0.2s; padding: 4px;
+      display: flex; align-items: center;
+    }
+    .toggle-vis:hover { color: var(--text); }
+    .toggle-vis svg { width: 17px; height: 17px; }
+
+    .check-btn {
+      background: var(--grad);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 14px 28px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+      white-space: nowrap;
+      box-shadow: 0 4px 14px rgba(29,78,216,0.30);
+    }
+    .check-btn:hover   { opacity: 0.92; transform: translateY(-2px); box-shadow: 0 8px 22px rgba(29,78,216,0.35); }
+    .check-btn:active  { transform: translateY(0); }
+    .check-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .entropy-bar-wrap { margin-top: 18px; display: none; }
+    .entropy-bar-wrap.visible { display: block; }
+    .entropy-bar-meta {
+      display: flex; justify-content: space-between;
+      font-size: 0.71rem; color: var(--muted); margin-bottom: 8px; font-weight: 500;
+    }
+    .entropy-bar-track {
+      height: 4px; background: var(--surface);
+      border-radius: 100px; overflow: hidden;
+    }
+    .entropy-bar-fill {
+      height: 100%; border-radius: 100px;
+      transition: width 0.5s cubic-bezier(0.4,0,0.2,1), background 0.5s ease;
+    }
+
+    /* Results */
+    #results { display: none; animation: fadeUp 0.4s cubic-bezier(0.4,0,0.2,1); }
+    #results.visible { display: block; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .strength-banner {
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      margin-bottom: 16px;
+      display: flex; align-items: center; gap: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+    .strength-icon {
+      width: 52px; height: 52px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .strength-label { font-size: 0.66rem; letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 4px; font-weight: 600; }
+    .strength-title { font-family: 'DM Serif Display', serif; font-size: 1.5rem; line-height: 1.2; color: var(--text); }
+
+    .s-very_strong { background: #f0fdf4; border: 1.5px solid #bbf7d0; }
+    .s-very_strong .strength-icon  { background: #dcfce7; color: var(--green); }
+    .s-very_strong .strength-label { color: var(--green); }
+    .s-strong      { background: #eff6ff; border: 1.5px solid #bfdbfe; }
+    .s-strong .strength-icon  { background: #dbeafe; color: var(--blue); }
+    .s-strong .strength-label { color: var(--blue); }
+    .s-fair        { background: #fffbeb; border: 1.5px solid #fde68a; }
+    .s-fair .strength-icon  { background: #fef3c7; color: var(--yellow); }
+    .s-fair .strength-label { color: var(--yellow); }
+    .s-weak        { background: #fff7ed; border: 1.5px solid #fed7aa; }
+    .s-weak .strength-icon  { background: #ffedd5; color: var(--orange); }
+    .s-weak .strength-label { color: var(--orange); }
+    .s-very_weak   { background: #fef2f2; border: 1.5px solid #fecaca; }
+    .s-very_weak .strength-icon  { background: #fee2e2; color: var(--red); }
+    .s-very_weak .strength-label { color: var(--red); }
+    .s-breached    { background: #fef2f2; border: 2px solid #f87171; }
+    .s-breached .strength-icon  { background: #fee2e2; color: var(--red); }
+    .s-breached .strength-label { color: var(--red); }
+
+    .stats-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 16px; }
+    .stat-card {
+      background: var(--card); border-radius: var(--radius-sm);
+      padding: 20px 18px; text-align: center;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+    .stat-val {
+      font-size: 2rem; font-weight: 300; line-height: 1;
+      margin-bottom: 5px; letter-spacing: -0.02em;
+      background: var(--grad);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-lbl { font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+    .char-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 16px; }
+    .char-badge {
+      background: var(--card); border-radius: 12px;
+      padding: 14px 8px; text-align: center;
+      box-shadow: var(--shadow-sm);
+      border: 1.5px solid transparent;
+      transition: border-color 0.25s, background 0.25s, transform 0.2s;
+    }
+    .char-badge.has {
+      border-color: #bbf7d0; background: #f0fdf4;
+      transform: translateY(-2px);
+    }
+    .char-badge-icon { font-size: 1rem; margin-bottom: 5px; color: var(--muted); font-weight: 600; }
+    .char-badge.has .char-badge-icon { color: var(--green); }
+    .char-badge-lbl { font-size: 0.60rem; letter-spacing: 0.10em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+    .char-badge.has .char-badge-lbl { color: var(--green); }
+
+    .recs-title { font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; font-weight: 600; }
+    .rec-list { display: flex; flex-direction: column; gap: 8px; }
+    .rec-item {
+      display: flex; gap: 12px; align-items: flex-start;
+      background: var(--card); border-radius: var(--radius-sm);
+      padding: 16px 18px;
+      font-size: 0.87rem; line-height: 1.65; color: var(--body);
+      box-shadow: var(--shadow-sm);
+      border-left: 3px solid transparent;
+    }
+    .rec-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 7px; }
+    .rec-item.critical { border-left-color: var(--red); }
+    .rec-item.critical .rec-dot { background: var(--red); }
+    .rec-item.warning  { border-left-color: var(--orange); }
+    .rec-item.warning  .rec-dot { background: var(--orange); }
+    .rec-item.info     { border-left-color: var(--blue); }
+    .rec-item.info     .rec-dot { background: var(--blue); }
+    .rec-item.success  { border-left-color: var(--green); }
+    .rec-item.success  .rec-dot { background: var(--green); }
+
+    .spinner {
+      display: none; margin: 48px auto; width: 36px; height: 36px;
+      border: 2.5px solid var(--surface); border-top-color: #1d4ed8;
+      border-radius: 50%; animation: spin 0.75s linear infinite;
+    }
+    .spinner.visible { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg {
+      display: none; background: #fef2f2;
+      border: 1px solid #fecaca; border-radius: var(--radius-sm);
+      padding: 14px 18px; font-size: 0.87rem; color: var(--red); margin-bottom: 14px;
+    }
+    .error-msg.visible { display: block; }
+
+    /* Section divider */
+    .section-sep { border: none; border-top: 1px solid #e5e7eb; margin: 72px 0; }
+
+    /* How it works disclosure */
+    .disclosure-wrap { margin-top: 64px; }
+
+    .disclosure-btn {
+      width: 100%; display: flex; align-items: center; justify-content: space-between;
+      background: var(--card); border: none; border-radius: var(--radius);
+      padding: 22px 28px; cursor: pointer;
+      box-shadow: var(--shadow-md);
+      transition: box-shadow 0.25s ease, transform 0.2s ease;
+      text-align: left;
+    }
+    .disclosure-btn:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+    .disclosure-btn.open { border-radius: var(--radius) var(--radius) 0 0; box-shadow: var(--shadow-md); transform: none; }
+
+    .disclosure-left { display: flex; flex-direction: column; gap: 3px; }
+    .disclosure-eyebrow { font-size: 0.66rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+    .disclosure-title { font-size: 1.05rem; font-weight: 600; color: var(--text); }
+
+    .disclosure-chevron {
+      width: 22px; height: 22px; color: var(--muted); flex-shrink: 0;
+      transition: transform 0.35s cubic-bezier(0.4,0,0.2,1), color 0.2s;
+    }
+    .disclosure-btn.open .disclosure-chevron { transform: rotate(180deg); color: #1d4ed8; }
+
+    .disclosure-body {
+      max-height: 0; overflow: hidden;
+      transition: max-height 0.55s cubic-bezier(0.4,0,0.2,1);
+      background: var(--card);
+      border-radius: 0 0 var(--radius) var(--radius);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.08);
+    }
+    .disclosure-body.open { max-height: 4000px; }
+    .disclosure-inner { padding: 32px 28px; }
+
+    .how-photo {
+      width: 100%; height: 210px; object-fit: cover;
+      border-radius: var(--radius-sm); margin-bottom: 28px; display: block;
+    }
+
+    /* Apple-style segmented control */
+    .segmented-wrap { margin-bottom: 28px; }
+    .segmented {
+      display: inline-flex; background: var(--surface);
+      border-radius: 12px; padding: 4px; position: relative; width: 100%;
+    }
+    .seg-btn {
+      flex: 1; position: relative; z-index: 1;
+      padding: 10px 16px; border: none; background: none;
+      font-family: 'Inter', sans-serif; font-size: 0.84rem;
+      font-weight: 500; color: var(--muted); cursor: pointer;
+      border-radius: 9px; transition: color 0.2s; text-align: center;
+    }
+    .seg-btn.active { color: var(--text); }
+    .seg-slider {
+      position: absolute; top: 4px; height: calc(100% - 8px);
+      background: #fff; border-radius: 9px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+      transition: left 0.25s cubic-bezier(0.4,0,0.2,1), width 0.25s cubic-bezier(0.4,0,0.2,1);
+      pointer-events: none;
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .steps-list { display: flex; flex-direction: column; }
+    .step-item {
+      display: flex; gap: 18px; align-items: flex-start;
+      padding: 20px 0; border-bottom: 1px solid #f0f0f5;
+    }
+    .step-item:first-child { padding-top: 0; }
+    .step-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .step-num-circle {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, #eff6ff, #dbeafe);
+      border: 1.5px solid #bfdbfe;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 1px;
+      font-size: 0.76rem; font-weight: 700; color: var(--blue); letter-spacing: 0;
+    }
+    .step-title { font-size: 0.92rem; font-weight: 600; color: var(--text); margin-bottom: 5px; }
+    .step-body  { font-size: 0.85rem; line-height: 1.7; color: var(--body); }
+
+    .code-flow { display: flex; flex-direction: column; }
+    .code-row {
+      display: flex; gap: 16px; align-items: flex-start;
+      padding: 18px 0; border-bottom: 1px solid #f0f0f5;
+    }
+    .code-row:first-child { padding-top: 0; }
+    .code-row:last-child  { border-bottom: none; padding-bottom: 0; }
+    .code-num {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: linear-gradient(135deg, #eff6ff, #dbeafe);
+      border: 1.5px solid #bfdbfe;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 1px;
+      font-size: 0.72rem; font-weight: 700; color: var(--blue);
+    }
+    .code-body { font-size: 0.85rem; line-height: 1.7; color: var(--body); }
+    .code-body strong { color: var(--text); font-weight: 600; }
+    .code-body code {
+      font-family: 'SF Mono', 'Courier New', monospace; font-size: 0.78rem;
+      background: #eff6ff; color: #1d4ed8;
+      padding: 2px 7px; border-radius: 5px; white-space: nowrap;
+    }
+
+    .hibp-card {
+      margin-top: 28px; background: var(--surface);
+      border-radius: var(--radius-sm); overflow: hidden;
+    }
+    .hibp-photo { width: 100%; height: 170px; object-fit: cover; display: block; }
+    .hibp-body  { padding: 22px; }
+    .hibp-title { font-size: 0.92rem; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+    .hibp-text  { font-size: 0.84rem; line-height: 1.7; color: var(--body); margin-bottom: 16px; }
+    .hibp-link  {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.80rem; color: var(--blue); text-decoration: none; font-weight: 600;
+      padding: 8px 16px; background: #eff6ff; border-radius: 100px;
+      transition: background 0.2s;
+    }
+    .hibp-link:hover { background: #dbeafe; }
+    .hibp-link svg { width: 13px; height: 13px; }
+
+    /* Facts section */
+    .facts-section { margin-top: 72px; }
+    .section-eyebrow {
+      font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase;
+      color: var(--blue); margin-bottom: 8px; font-weight: 700;
+    }
+    .section-heading {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.8rem; color: var(--text); margin-bottom: 32px; line-height: 1.25;
+    }
+
+    .facts-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; }
+    @media (max-width: 480px) { .facts-grid { grid-template-columns: 1fr; } }
+
+    .fact-card {
+      background: var(--card); border-radius: var(--radius);
+      padding: 26px 22px; box-shadow: var(--shadow-sm);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .fact-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
+
+    .fact-stat {
+      font-size: 2.6rem; font-weight: 700; line-height: 1;
+      margin-bottom: 12px; letter-spacing: -0.03em;
+      background: var(--grad);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .fact-text { font-size: 0.84rem; line-height: 1.7; color: var(--body); margin-bottom: 14px; }
+    .fact-source { font-size: 0.68rem; color: var(--muted); }
+    .fact-source a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; transition: color 0.2s; }
+    .fact-source a:hover { color: var(--blue); }
+
+    /* Misconceptions */
+    .mc-section { margin-top: 56px; }
+    .mc-list { display: flex; flex-direction: column; gap: 0; }
+    .mc-item {
+      display: flex; gap: 18px; align-items: flex-start;
+      padding: 22px 0; border-bottom: 1px solid #f0f0f5;
+    }
+    .mc-item:first-child { padding-top: 0; }
+    .mc-item:last-child  { border-bottom: none; }
+    .mc-num {
+      font-size: 0.7rem; font-weight: 700; color: #bfdbfe;
+      flex-shrink: 0; margin-top: 2px; min-width: 24px; letter-spacing: 0.05em;
+    }
+    .mc-body { font-size: 0.87rem; line-height: 1.7; color: var(--body); }
+    .mc-body strong { color: var(--text); font-weight: 600; }
+    .mc-source { font-size: 0.68rem; color: var(--muted); margin-top: 7px; }
+    .mc-source a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; transition: color 0.2s; }
+    .mc-source a:hover { color: var(--blue); }
+
+    /* Footer */
+    footer {
+      margin-top: 80px; padding-top: 28px;
+      border-top: 1px solid #e5e7eb;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 10px;
+    }
+    footer span { font-size: 0.72rem; color: var(--muted); }
+    footer a { color: var(--muted); text-decoration: none; transition: color 0.2s; }
+    footer a:hover { color: var(--blue); }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="wordmark reveal">WAS MY PASSWORD <span class="accent">LEAKED?</span></div>
+    <p class="subtitle reveal reveal-delay-1">Check if your password has appeared in a data breach and get a personalised strength report.</p>
+    <div class="privacy-pill reveal reveal-delay-2">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      Your password never leaves your device in plain text. Protected by k-anonymity.
+    </div>
+  </div>
+
+  <!-- Input -->
+  <div class="input-card reveal">
+    <p class="input-label">Enter a password to check</p>
+    <div class="input-row">
+      <div class="input-wrap">
+        <input
+          type="password" id="passwordInput"
+          placeholder="Type or paste a password…"
+          autocomplete="off" spellcheck="false"
+        />
+        <button class="toggle-vis" id="toggleVis" title="Show / hide" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+      <button class="check-btn" id="checkBtn" type="button" disabled>Check</button>
+    </div>
+    <div class="entropy-bar-wrap" id="entropyBarWrap">
+      <div class="entropy-bar-meta">
+        <span>Password strength</span>
+        <span id="entropyBarVal">0 bits</span>
+      </div>
+      <div class="entropy-bar-track">
+        <div class="entropy-bar-fill" id="entropyBarFill" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- States -->
+  <div class="error-msg" id="errorMsg"></div>
+  <div class="spinner"   id="spinner"></div>
+
+  <!-- Results -->
+  <div id="results">
+    <div class="strength-banner" id="strengthBanner">
+      <div class="strength-icon" id="strengthIcon"></div>
+      <div>
+        <div class="strength-label" id="strengthLabel"></div>
+        <div class="strength-title" id="strengthTitle"></div>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-val" id="statEntropy">0</div>
+        <div class="stat-lbl">Entropy (bits)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="statLength">0</div>
+        <div class="stat-lbl">Characters</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="statPwned">0</div>
+        <div class="stat-lbl">Breach count</div>
+      </div>
+    </div>
+
+    <div class="char-grid">
+      <div class="char-badge" id="badgeLower">
+        <div class="char-badge-icon">a–z</div>
+        <div class="char-badge-lbl">Lower</div>
+      </div>
+      <div class="char-badge" id="badgeUpper">
+        <div class="char-badge-icon">A–Z</div>
+        <div class="char-badge-lbl">Upper</div>
+      </div>
+      <div class="char-badge" id="badgeDigits">
+        <div class="char-badge-icon">0–9</div>
+        <div class="char-badge-lbl">Numbers</div>
+      </div>
+      <div class="char-badge" id="badgeSymbols">
+        <div class="char-badge-icon">!@#</div>
+        <div class="char-badge-lbl">Symbols</div>
+      </div>
+    </div>
+
+    <p class="recs-title">Recommendations</p>
+    <div class="rec-list" id="recList"></div>
+  </div>
+
+  <!-- How it works disclosure -->
+  <div class="disclosure-wrap reveal">
+    <button class="disclosure-btn" id="disclosureBtn" type="button" aria-expanded="false">
+      <div class="disclosure-left">
+        <span class="disclosure-eyebrow">Behind the scenes</span>
+        <span class="disclosure-title">How does this work?</span>
+      </div>
+      <svg class="disclosure-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="6 9 12 15 18 9"/>
+      </svg>
+    </button>
+
+    <div class="disclosure-body" id="disclosureBody">
+      <div class="disclosure-inner">
+
+        <img
+          class="how-photo"
+          src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=1200&auto=format&fit=crop&q=80"
+          alt="Cybersecurity"
+          loading="lazy"
+        />
+
+        <div class="segmented-wrap">
+          <div class="segmented" id="segmented" role="tablist">
+            <div class="seg-slider" id="segSlider"></div>
+            <button class="seg-btn active" data-tab="overview"  type="button" role="tab">Overview</button>
+            <button class="seg-btn"        data-tab="underhood" type="button" role="tab">Under the Hood</button>
+          </div>
+        </div>
+
+        <!-- Overview tab -->
+        <div class="tab-content active" id="tab-overview">
+          <div class="steps-list">
+
+            <div class="step-item">
+              <div class="step-num-circle">1</div>
+              <div>
+                <p class="step-title">You type your password</p>
+                <p class="step-body">Your password stays on your device the whole time. Nothing is sent in plain text, not to us, not to anyone. You could disconnect from the internet right now and the strength check would still run.</p>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-num-circle">2</div>
+              <div>
+                <p class="step-title">It gets turned into a fingerprint</p>
+                <p class="step-body">Your password is converted into a unique scrambled code called a hash. This is a one-way process: nobody can reverse that code back to your original password.</p>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-num-circle">3</div>
+              <div>
+                <p class="step-title">Only a tiny piece is sent out</p>
+                <p class="step-body">Imagine that fingerprint is 40 characters long. We only send the first 5 to HaveIBeenPwned. That small piece is enough to search their database without ever exposing which specific password is yours.</p>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-num-circle">4</div>
+              <div>
+                <p class="step-title">A list comes back</p>
+                <p class="step-body">HaveIBeenPwned responds with hundreds of leaked codes that start with those same 5 characters. Your device compares privately and locally. Nobody learns which password you were checking.</p>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-num-circle">5</div>
+              <div>
+                <p class="step-title">You get your result</p>
+                <p class="step-body">If your password matches one in the leaked list, we show you how many times it appeared in real breaches. No match means you are in the clear in our dataset, though no tool can guarantee absolute safety online.</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Under the Hood tab -->
+        <div class="tab-content" id="tab-underhood">
+          <div class="code-flow">
+
+            <div class="code-row">
+              <div class="code-num">1</div>
+              <div class="code-body">
+                <strong>SHA-1 hashing (client-side)</strong><br>
+                Your password is hashed using SHA-1. For example: <code>"password"</code> becomes <code>5BAA61E4C9B93F3F0682250B6CF8331B7EE68FD8</code>. This is deterministic and one-way: the original input cannot be recovered from the hash.
+              </div>
+            </div>
+
+            <div class="code-row">
+              <div class="code-num">2</div>
+              <div class="code-body">
+                <strong>k-anonymity prefix query</strong><br>
+                Only the first 5 hex characters (<code>5BAA6</code>) are sent to the HIBP Range API: <code>GET api.pwnedpasswords.com/range/5BAA6</code>. The server never knows which specific password is being queried. This is the k-anonymity model, originally proposed by Cloudflare and HIBP in 2018.
+              </div>
+            </div>
+
+            <div class="code-row">
+              <div class="code-num">3</div>
+              <div class="code-body">
+                <strong>Padded range response</strong><br>
+                The API returns roughly 800 hash suffixes (the 35 characters after the prefix) along with a breach count for each. The <code>Add-Padding: true</code> request header pads the response to a constant size, which neutralises traffic-analysis attacks.
+              </div>
+            </div>
+
+            <div class="code-row">
+              <div class="code-num">4</div>
+              <div class="code-body">
+                <strong>Local suffix comparison</strong><br>
+                The remaining 35 characters of your hash are compared against the returned list entirely on your device. No additional network request is made. Zero knowledge of your input is ever transmitted.
+              </div>
+            </div>
+
+            <div class="code-row">
+              <div class="code-num">5</div>
+              <div class="code-body">
+                <strong>Breach count interpretation</strong><br>
+                A matching suffix returns a count representing how many times that exact password appeared in HIBP's corpus of 13+ billion records. A count of 0 means no match, which is a strong positive signal, though not an absolute safety guarantee.
+              </div>
+            </div>
+
+          </div>
+
+          <div class="hibp-card">
+            <img
+              class="hibp-photo"
+              src="https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=1200&auto=format&fit=crop&q=80"
+              alt="Data servers"
+              loading="lazy"
+            />
+            <div class="hibp-body">
+              <p class="hibp-title">About HaveIBeenPwned</p>
+              <p class="hibp-text">Created by security researcher Troy Hunt in 2013, HaveIBeenPwned aggregates data from hundreds of public data breaches into a searchable database of over 13 billion compromised accounts. The Pwned Passwords service catalogues 847+ million unique password hashes. The k-anonymity Range API was co-designed with Cloudflare and published as an open, auditable protocol.</p>
+              <a class="hibp-link" href="https://haveibeenpwned.com/API/v3" target="_blank" rel="noopener">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
+                  <polyline points="15 3 21 3 21 9"/>
+                  <line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+                Read the HIBP API v3 Documentation
+              </a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Facts -->
+  <section class="facts-section">
+    <p class="section-eyebrow reveal">By the numbers</p>
+    <h2 class="section-heading reveal">Password security in 2024</h2>
+    <div class="facts-grid">
+
+      <div class="fact-card reveal">
+        <div class="fact-stat">24B+</div>
+        <p class="fact-text">Username and password combinations were circulating on criminal marketplaces in 2022, a 65% jump from 2020.</p>
+        <p class="fact-source">Source: <a href="https://spycloud.com/blog/2022-annual-credential-exposure-report/" target="_blank" rel="noopener">SpyCloud 2022 Annual Credential Exposure Report</a></p>
+      </div>
+
+      <div class="fact-card reveal reveal-delay-1">
+        <div class="fact-stat">81%</div>
+        <p class="fact-text">Of hacking-related data breaches involved stolen, weak, or reused passwords, making credentials the number one attack vector.</p>
+        <p class="fact-source">Source: <a href="https://www.verizon.com/business/resources/reports/dbir/" target="_blank" rel="noopener">Verizon 2022 Data Breach Investigations Report</a></p>
+      </div>
+
+      <div class="fact-card reveal reveal-delay-2">
+        <div class="fact-stat">65%</div>
+        <p class="fact-text">Of people reuse the same password across multiple accounts, so one breach can cascade and compromise everything they own online.</p>
+        <p class="fact-source">Source: <a href="https://services.google.com/fh/files/blogs/google_security_infographic.pdf" target="_blank" rel="noopener">Google / Harris Poll, 2019</a></p>
+      </div>
+
+      <div class="fact-card reveal reveal-delay-3">
+        <div class="fact-stat">&lt;1s</div>
+        <p class="fact-text">"123456", the world's most commonly used password four years running, can be cracked in under one second by any modern tool.</p>
+        <p class="fact-source">Source: <a href="https://nordpass.com/most-common-passwords-list/" target="_blank" rel="noopener">NordPass Most Common Passwords Report, 2023</a></p>
+      </div>
+
+      <div class="fact-card reveal">
+        <div class="fact-stat">62T×</div>
+        <p class="fact-text">How much longer it takes to crack a 12-character password versus a 6-character one. Every added character multiplies the effort exponentially.</p>
+        <p class="fact-source">Source: <a href="https://www.hivesystems.com/blog/are-your-passwords-in-the-green" target="_blank" rel="noopener">Hive Systems Password Table, 2023</a></p>
+      </div>
+
+      <div class="fact-card reveal reveal-delay-1">
+        <div class="fact-stat">12%</div>
+        <p class="fact-text">Only about 1 in 8 people use a dedicated password manager, the single most effective tool for strong, unique passwords everywhere.</p>
+        <p class="fact-source">Source: <a href="https://www.security.org/digital-safety/password-manager-annual-report/" target="_blank" rel="noopener">Security.org Password Manager Report, 2023</a></p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Misconceptions -->
+  <section class="mc-section">
+    <p class="section-eyebrow reveal">Common misconceptions</p>
+    <h2 class="section-heading reveal">Things people get wrong</h2>
+    <div class="mc-list">
+
+      <div class="mc-item reveal">
+        <div class="mc-num">01</div>
+        <div>
+          <p class="mc-body"><strong>Letter-to-symbol swaps add very little real security.</strong> Replacing "E" with "3" or "a" with "@" is one of the first substitution patterns password-cracking software tries. It barely increases the time to crack.</p>
+          <p class="mc-source">Source: <a href="https://pages.nist.gov/800-63-3/sp800-63b.html" target="_blank" rel="noopener">NIST SP 800-63B: Digital Identity Guidelines</a></p>
+        </div>
+      </div>
+
+      <div class="mc-item reveal">
+        <div class="mc-num">02</div>
+        <div>
+          <p class="mc-body"><strong>8 characters is no longer a safe minimum.</strong> A modern GPU can exhaust all possible 8-character passwords in minutes. The current guidance is at least 14 characters.</p>
+          <p class="mc-source">Source: <a href="https://www.hivesystems.com/blog/are-your-passwords-in-the-green" target="_blank" rel="noopener">Hive Systems Password Cracking Table, 2023</a></p>
+        </div>
+      </div>
+
+      <div class="mc-item reveal">
+        <div class="mc-num">03</div>
+        <div>
+          <p class="mc-body"><strong>A strong password is not safe if you reuse it.</strong> If one website stores passwords in plaintext and gets breached, every account sharing that password is instantly compromised regardless of its complexity.</p>
+          <p class="mc-source">Source: <a href="https://www.verizon.com/business/resources/reports/dbir/" target="_blank" rel="noopener">Verizon 2022 DBIR: Credential Stuffing Attacks</a></p>
+        </div>
+      </div>
+
+      <div class="mc-item reveal">
+        <div class="mc-num">04</div>
+        <div>
+          <p class="mc-body"><strong>Passphrases beat short complex passwords.</strong> "correct-horse-battery-staple" at 29 characters is far stronger than "P@ssw0rd!" at 9 characters and significantly easier to remember. Length beats complexity every time.</p>
+          <p class="mc-source">Source: <a href="https://xkcd.com/936/" target="_blank" rel="noopener">XKCD #936: Password Strength</a> &amp; <a href="https://pages.nist.gov/800-63-3/sp800-63b.html" target="_blank" rel="noopener">NIST SP 800-63B</a></p>
+        </div>
+      </div>
+
+      <div class="mc-item reveal">
+        <div class="mc-num">05</div>
+        <div>
+          <p class="mc-body"><strong>Frequent mandatory password changes can backfire.</strong> Forced resets lead users to pick weaker incremental variations. NIST now recommends only changing passwords when there is evidence of compromise.</p>
+          <p class="mc-source">Source: <a href="https://pages.nist.gov/800-63-3/sp800-63b.html#sec5" target="_blank" rel="noopener">NIST SP 800-63B §5.1.1: Memorized Secret Authenticators</a></p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <span>Built by <a href="https://zooeeem.github.io" target="_blank">Althea Zoe Anasco</a></span>
+    <span>Powered by <a href="https://haveibeenpwned.com/API/v3" target="_blank">HaveIBeenPwned API</a></span>
+  </footer>
+
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+
+  // Scroll reveal: watch for elements entering the viewport
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        revealObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.12 });
+
+  document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+  // Make the hero elements visible right away since they are above the fold
+  document.querySelectorAll('.hero .reveal').forEach(el => el.classList.add('visible'));
+
+  // Disclosure accordion
+  const discBtn  = $('disclosureBtn');
+  const discBody = $('disclosureBody');
+
+  discBtn.addEventListener('click', () => {
+    const isOpen = discBtn.classList.contains('open');
+    if (isOpen) {
+      discBody.style.maxHeight = '0px';
+      discBtn.classList.remove('open');
+      discBtn.setAttribute('aria-expanded', 'false');
+    } else {
+      discBody.style.maxHeight = discBody.scrollHeight + 'px';
+      discBtn.classList.add('open');
+      discBtn.setAttribute('aria-expanded', 'true');
+    }
+  });
+
+  // Segmented control: slide the pill to the active button
+  function positionSlider() {
+    const active = document.querySelector('.seg-btn.active');
+    const slider = $('segSlider');
+    if (!active || !slider) return;
+    slider.style.left  = active.offsetLeft + 'px';
+    slider.style.width = active.offsetWidth + 'px';
+  }
+
+  document.querySelectorAll('.seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      positionSlider();
+      // Re-measure because content height changed
+      if (discBtn.classList.contains('open')) {
+        discBody.style.maxHeight = discBody.scrollHeight + 'px';
+      }
+    });
+  });
+
+  if (document.fonts) document.fonts.ready.then(positionSlider);
+  else window.addEventListener('load', positionSlider);
+
+  // Strength display config
+  const strengthConfig = {
+    very_strong: {
+      label: 'Very Strong', title: 'This is an excellent password.',
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>`,
+    },
+    strong: {
+      label: 'Strong', title: 'Good password. Keep it up.',
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>`,
+    },
+    fair: {
+      label: 'Fair', title: 'Acceptable, but can be improved.',
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+    },
+    weak: {
+      label: 'Weak', title: 'Too easy to guess or crack.',
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg>`,
+    },
+    very_weak: {
+      label: 'Very Weak', title: 'This will be cracked instantly.',
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
+    },
+    breached: {
+      label: 'Breached', title: 'Found in a real data breach. Change it now.',
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
+    },
+  };
+
+  // Live entropy bar while typing
+  function liveEntropy(pw) {
+    let pool = 0;
+    if (/[a-z]/.test(pw)) pool += 26;
+    if (/[A-Z]/.test(pw)) pool += 26;
+    if (/[0-9]/.test(pw)) pool += 10;
+    if (/[^a-zA-Z0-9]/.test(pw)) pool += 32;
+    return (!pw.length || !pool) ? 0 : pw.length * Math.log2(pool);
+  }
+
+  $('passwordInput').addEventListener('input', () => {
+    const pw = $('passwordInput').value;
+    $('checkBtn').disabled = !pw.length;
+    const wrap = $('entropyBarWrap');
+    if (!pw.length) { wrap.classList.remove('visible'); return; }
+    wrap.classList.add('visible');
+    const bits = liveEntropy(pw);
+    const fill = $('entropyBarFill');
+    fill.style.width = Math.min(bits / 100 * 100, 100) + '%';
+    if      (bits < 28) fill.style.background = '#dc2626';
+    else if (bits < 36) fill.style.background = '#c2410c';
+    else if (bits < 60) fill.style.background = '#b45309';
+    else if (bits < 80) fill.style.background = '#1d4ed8';
+    else                fill.style.background = '#16a34a';
+    $('entropyBarVal').textContent = bits.toFixed(1) + ' bits';
+  });
+
+  // Show / hide the password characters
+  let pwVisible = false;
+  $('toggleVis').addEventListener('click', () => {
+    pwVisible = !pwVisible;
+    $('passwordInput').type = pwVisible ? 'text' : 'password';
+  });
+
+  $('passwordInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !$('checkBtn').disabled) runCheck();
+  });
+  $('checkBtn').addEventListener('click', runCheck);
+
+  // Send the password to the backend and show the result
+  async function runCheck() {
+    const pw = $('passwordInput').value;
+    if (!pw) return;
+    $('errorMsg').classList.remove('visible');
+    $('results').classList.remove('visible');
+    $('spinner').classList.add('visible');
+    $('checkBtn').disabled = true;
+    try {
+      const resp = await fetch('/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Something went wrong.');
+      renderResults(data);
+    } catch (err) {
+      $('errorMsg').textContent = err.message;
+      $('errorMsg').classList.add('visible');
+    } finally {
+      $('spinner').classList.remove('visible');
+      $('checkBtn').disabled = false;
+    }
+  }
+
+  // Populate all the result cards with data from the backend
+  function renderResults(d) {
+    const cfg = strengthConfig[d.strength] || strengthConfig.very_weak;
+    $('strengthBanner').className  = `strength-banner s-${d.strength}`;
+    $('strengthIcon').innerHTML    = cfg.icon;
+    $('strengthLabel').textContent = cfg.label;
+    $('strengthTitle').textContent = cfg.title;
+    $('statEntropy').textContent   = d.entropy;
+    $('statLength').textContent    = d.length;
+    $('statPwned').textContent     = d.pwned_count === null ? 'N/A'
+      : d.pwned_count === 0 ? '0' : d.pwned_count.toLocaleString();
+    $('statPwned').style.webkitTextFillColor = d.pwned_count ? '#dc2626'
+      : d.pwned_count === 0 ? '#16a34a' : '#8e8e93';
+    const map = {
+      badgeLower:   d.char_sets.lowercase,
+      badgeUpper:   d.char_sets.uppercase,
+      badgeDigits:  d.char_sets.digits,
+      badgeSymbols: d.char_sets.symbols,
+    };
+    Object.entries(map).forEach(([id, has]) => $(id).classList.toggle('has', has));
+    const list = $('recList');
+    list.innerHTML = '';
+    d.recommendations.forEach(rec => {
+      const item = document.createElement('div');
+      item.className = `rec-item ${rec.type}`;
+      item.innerHTML = `<div class="rec-dot"></div><span>${rec.text}</span>`;
+      list.appendChild(item);
+    });
+    $('results').classList.add('visible');
+    $('results').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+</script>
+</body>
+</html>
